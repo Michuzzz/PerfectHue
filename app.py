@@ -831,9 +831,9 @@ def index():
     file.save(absolute_upload_path)
     uploaded_file = "uploads/" + unique_name
 
-  image, avg_color, face_landmarks, face_error = get_skin_tone(
-    absolute_upload_path
-)
+    image, avg_color, face_landmarks, face_error = get_skin_tone(
+        absolute_upload_path
+    )
 
     if face_error:
         return render_homepage(
@@ -898,6 +898,7 @@ def index():
                     int(row["G"]),
                     int(row["B"])
                 ],
+                face_landmarks,
                 mode
             )
 
