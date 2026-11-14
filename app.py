@@ -230,76 +230,50 @@ def check_india_availability(value):
 # SKIN TONE DETECTION
 # --------------------------------------------------
 
+
 def get_skin_tone(image_path):
-    """
-    Detect one face and estimate representative skin colour.
-
-    Returns:
-        image, average RGB colour, error message
-    """
-
     try:
         image = load_image_as_bgr(image_path)
-
     except Exception:
-        return (
-            None,
-            None,
-            "Could not read the uploaded image. "
-            "Please try another file."
-        )
+        return None, None, None, "Could not read the uploaded image."
 
     if image is None:
-        return None, None, "Could not read the uploaded image."
+        return None, None, None, "Could not read the uploaded image."
 
-    max_dimension = 800
+    max_dimension = 640
     height, width = image.shape[:2]
 
     if max(height, width) > max_dimension:
-
         scale = max_dimension / max(height, width)
-
         image = cv2.resize(
             image,
-            (
-                int(width * scale),
-                int(height * scale)
-            )
+            (int(width * scale), int(height * scale))
         )
 
-    image_rgb = cv2.cvtColor(
-        image, cv2.COLOR_BGR2RGB
-    )
-
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     results = face_mesh.process(image_rgb)
 
     if not results.multi_face_landmarks:
-        return (
-            None,
-            None,
+        return None, None, None, (
             "No face detected. Please upload a clear, "
             "front-facing photograph."
         )
 
     if len(results.multi_face_landmarks) > 1:
-        return (
-            None,
-            None,
+        return None, None, None, (
             "Multiple faces detected. Please upload "
             "a photograph containing only one face."
         )
 
-    height, width, _ = image.shape
     landmarks = results.multi_face_landmarks[0].landmark
 
-    # Sample interior face regions rather than the face outline.
+    height, width, _ = image.shape
     sample_landmarks = [109, 338, 117, 346, 50, 280]
 
     patch_radius = max(3, int(width * 0.012))
     skin_pixels = []
 
     for landmark_index in sample_landmarks:
-
         landmark = landmarks[landmark_index]
 
         x = int(landmark.x * width)
@@ -307,7 +281,6 @@ def get_skin_tone(image_path):
 
         x1 = max(0, x - patch_radius)
         x2 = min(width, x + patch_radius + 1)
-
         y1 = max(0, y - patch_radius)
         y2 = min(height, y + patch_radius + 1)
 
@@ -316,9 +289,9 @@ def get_skin_tone(image_path):
         if patch.size == 0:
             continue
 
-        # Exclude extreme highlights and very dark pixels.
         hsv_patch = cv2.cvtColor(
-            patch.astype(np.uint8), cv2.COLOR_RGB2HSV
+            patch.astype(np.uint8),
+            cv2.COLOR_RGB2HSV
         )
 
         value_channel = hsv_patch[:, :, 2]
@@ -331,21 +304,17 @@ def get_skin_tone(image_path):
             skin_pixels.extend(valid_pixels.tolist())
 
     if len(skin_pixels) < 20:
-        return (
-            None,
-            None,
+        return None, None, None, (
             "Could not sample enough clear skin areas. "
-            "Please upload a well-lit, front-facing photograph "
-            "without strong shadows or filters."
+            "Please upload a well-lit, front-facing photograph."
         )
 
-    # Median is less affected by unusually bright or dark pixels.
     average_colour = np.median(
         np.asarray(skin_pixels, dtype=np.uint8),
         axis=0
     ).astype(int)
 
-    return image, average_colour, None
+    return image, average_colour, landmarks, None
 
 
 # --------------------------------------------------
