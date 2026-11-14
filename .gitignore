@@ -1,0 +1,33 @@
+
+# Python virtual environment
+venv/
+.venv/
+env/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Uploaded photographs and generated previews
+static/uploads/*
+!static/uploads/.gitkeep
+
+# Generated PDF reports
+static/downloads/*
+!static/downloads/.gitkeep
+
+# Editor and operating system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.log
+.pytest_cache/

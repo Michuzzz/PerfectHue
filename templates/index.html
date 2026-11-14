@@ -1,0 +1,760 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>PerfectHue | Your Perfect Foundation Match</title>
+
+    <meta name="description" content="Discover foundation shades that complement your skin tone with AI-powered skin tone analysis.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <style>
+        /* Additional styles for the updated results */
+
+        .color-swatch,
+        .shade-colour {
+            background-color: #e8c6b7;
+        }
+
+        .shade-colour {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            margin: 15px auto;
+            border: 3px solid white;
+            box-shadow: 0 2px 9px rgba(0,0,0,0.12);
+        }
+
+        .shade-rgb {
+            background: #faf3f0;
+            padding: 15px;
+            border-radius: 12px;
+            margin: 15px 0;
+            font-size: 13px;
+        }
+
+        .availability {
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .available {
+            color: #43836b;
+        }
+
+        .unavailable {
+            color: #bd6877;
+        }
+
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .preview-item img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-radius: 12px;
+        }
+
+        .preview-item p {
+            font-size: 11px;
+            margin-bottom: 7px;
+        }
+
+        .download-area {
+            max-width: 750px;
+            margin: 45px auto;
+            padding: 30px;
+            background: #fff;
+            border: 1px solid #ead8d8;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(80,50,60,0.06);
+        }
+
+        .download-button {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 14px 30px;
+            background: #a96f80;
+            color: white;
+            text-decoration: none;
+            border-radius: 30px;
+            font-weight: 700;
+            transition: 0.3s;
+        }
+
+        .download-button:hover {
+            background: #865467;
+            transform: translateY(-2px);
+        }
+
+        .download-note {
+            font-size: 12px;
+            color: #88777d;
+            margin-top: 15px;
+        }
+
+        .analysis-section,
+        .results-section,
+        .recommendations-section {
+            padding: 65px 7%;
+            text-align: center;
+        }
+
+        .analysis-card {
+            max-width: 650px;
+            margin: 30px auto;
+            padding: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 25px;
+            background: white;
+            border: 1px solid #eadbdb;
+            border-radius: 20px;
+            text-align: left;
+        }
+
+        .color-swatch {
+            width: 95px;
+            height: 95px;
+            min-width: 95px;
+            border: 5px solid white;
+            outline: 1px solid #eadbdb;
+            border-radius: 18px;
+        }
+
+        .analysis-details p {
+            margin: 8px 0;
+            color: #806e74;
+        }
+
+        .analysis-details h3 {
+            color: #a96f80;
+            font-size: 24px;
+        }
+
+        .undertone-result {
+            font-weight: 700;
+            color: #624b55;
+        }
+
+        .undertone-note {
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .uploaded-preview {
+            width: 220px;
+            max-width: 100%;
+            max-height: 280px;
+            object-fit: cover;
+            border-radius: 16px;
+            margin: 20px auto;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .shade-list {
+            max-width: 1250px;
+            margin: 40px auto;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 25px;
+        }
+
+        .shade-card {
+            background: white;
+            border: 1px solid #ecdede;
+            border-radius: 20px;
+            padding: 25px 18px;
+            box-shadow: 0 10px 30px rgba(80,50,60,0.06);
+        }
+
+        .shade-card h3 {
+            color: #98616e;
+            margin-top: 15px;
+        }
+
+        .shade-number {
+            color: #bd818b;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+
+        .shade-name {
+            font-weight: 700;
+        }
+
+        .shade-product {
+            font-size: 13px;
+            color: #806e74;
+        }
+
+        .preview-container {
+            margin-top: 20px;
+            padding: 12px;
+            background: #faf3f0;
+            border-radius: 14px;
+        }
+
+        .preview-item {
+            min-width: 0;
+        }
+
+        .error-message {
+            max-width: 750px;
+            margin: 20px auto;
+            padding: 15px;
+            background: #fff0f0;
+            color: #a34255;
+            border-radius: 12px;
+        }
+
+        .upload-area {
+            cursor: pointer;
+        }
+
+        @media (max-width: 900px) {
+            .shade-list {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 650px) {
+            .shade-list {
+                grid-template-columns: 1fr;
+            }
+
+            .analysis-card {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .analysis-section,
+            .recommendations-section,
+            .results-section {
+                padding: 45px 18px;
+            }
+
+            .download-area {
+                padding: 25px 18px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- NAVIGATION -->
+    <header class="navbar">
+
+        <a href="/" class="brand">
+            <span class="brand-icon">✧</span>
+            <span>PerfectHue</span>
+        </a>
+
+        <nav>
+            <a href="#home">Home</a>
+            <a href="#how-it-works">How It Works</a>
+            <a href="#matcher">Find Your Shade</a>
+        </nav>
+
+    </header>
+
+
+    <main>
+
+        <!-- HERO SECTION -->
+        <section class="hero" id="home">
+
+            <div class="hero-content">
+
+                <p class="eyebrow">
+                    ✧ BEAUTY MEETS TECHNOLOGY ✧
+                </p>
+
+                <h1>
+                    Discover the shade<br>
+                    that feels like <em>you.</em>
+                </h1>
+
+                <p class="hero-description">
+                    Your skin is unique. Your foundation should be too.
+                    Discover personalised foundation recommendations
+                    through AI-powered skin tone analysis.
+                </p>
+
+                <a href="#matcher" class="primary-button">
+                    Discover Your Match <span>→</span>
+                </a>
+
+                <p class="hero-note">
+                    A personalised beauty experience, made for you.
+                </p>
+
+            </div>
+
+            <div class="hero-visual">
+
+                <div class="hero-image-card">
+
+                    <img
+                        src="{{ url_for('static', filename='images/beauty-hero.png') }}"
+                        alt="Luxury beauty and foundation collection"
+                    >
+
+                    <div class="image-caption">
+                        <span>YOUR BEAUTY, YOUR SHADE</span>
+                        <span>✧</span>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- MATCHER SECTION -->
+        <section class="matcher-section" id="matcher">
+
+            <div class="section-heading">
+
+                <p class="eyebrow">
+                    ✧ YOUR PERSONAL SHADE FINDER ✧
+                </p>
+
+                <h2>Let's find your perfect match</h2>
+
+                <p>
+                    Upload a clear photograph of your face
+                    and let us explore shades that complement your skin.
+                </p>
+
+            </div>
+
+            {% if error %}
+            <div class="error-message" role="alert">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <div class="upload-card">
+
+                <div class="upload-icon">✧</div>
+
+                <h3>Upload your photograph</h3>
+
+                <p>
+                    Choose a clear, front-facing photograph
+                    in natural lighting for better analysis.
+                </p>
+
+                <form action="/" method="POST"
+                      enctype="multipart/form-data"
+                      id="uploadForm">
+
+                    <label for="imageUpload" class="upload-area">
+
+                        <span class="upload-symbol">＋</span>
+
+                        <strong>Choose an image</strong>
+
+                        <span>
+                            or drag and drop your photograph here
+                        </span>
+
+                        <small>PNG, JPG or JPEG</small>
+
+                    </label>
+
+                    <input
+                        type="file"
+                        name="file"
+                        id="imageUpload"
+                        accept=".png,.jpg,.jpeg"
+                        required
+                    >
+
+                    <div id="fileName" class="file-name">
+                        No image selected
+                    </div>
+
+                    <button type="submit"
+                            class="primary-button upload-button">
+                        Find My Foundation Match →
+                    </button>
+
+                </form>
+
+                <div class="loading-spinner" id="loadingSpinner">
+                    <div class="spinner"></div>
+                    <p>Analysing your skin tone...</p>
+                </div>
+
+                <p class="privacy-note">
+                    ✧ Your photograph is used for shade analysis.
+                </p>
+
+            </div>
+
+        </section>
+
+
+        <!-- UPLOADED PHOTO -->
+        {% if uploaded_file %}
+
+        <section class="results-section" id="results">
+
+            <p class="eyebrow">✧ YOUR PHOTOGRAPH ✧</p>
+
+            <h2>Your uploaded photograph</h2>
+
+            <img
+                class="uploaded-preview"
+                src="{{ url_for('static', filename=uploaded_file) }}"
+                alt="Your uploaded face photograph"
+            >
+
+        </section>
+
+        {% endif %}
+
+
+        <!-- SKIN ANALYSIS -->
+        {% if skin_tone %}
+
+        <section class="analysis-section">
+
+            <p class="eyebrow">
+                ✧ YOUR SKIN ANALYSIS ✧
+            </p>
+
+            <h2>A little more about your skin</h2>
+
+            <div class="analysis-card">
+
+                <div
+                    class="color-swatch"
+                    data-color="{{ skin_tone_hex }}">
+                </div>
+
+                <div class="analysis-details">
+
+                    <p>Detected skin colour</p>
+
+                    <h3>{{ skin_tone_hex }}</h3>
+
+                    <p>
+                        RGB:
+                        {{ skin_tone[0] }},
+                        {{ skin_tone[1] }},
+                        {{ skin_tone[2] }}
+                    </p>
+
+                    <p>
+                        Estimated undertone:
+                        <span class="undertone-result">
+                            {{ undertone }}
+                        </span>
+                    </p>
+
+                    <p class="undertone-note">
+                        This is an image-based estimate.
+                        Lighting, makeup and camera settings
+                        may affect the result.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </section>
+
+        {% endif %}
+
+
+        <!-- FOUNDATION RECOMMENDATIONS -->
+        {% if recommendations %}
+
+        <section class="recommendations-section">
+
+            <p class="eyebrow">
+                ✧ CURATED FOR YOUR SKIN TONE ✧
+            </p>
+
+            <h2>Your closest foundation matches</h2>
+
+            <p>
+                Explore the foundation shades closest to
+                your detected skin colour.
+            </p>
+
+            <div class="shade-list">
+
+                {% for shade in recommendations %}
+
+                <article class="shade-card">
+
+                    <span class="shade-number">
+                        MATCH 0{{ loop.index }}
+                    </span>
+
+                    <h3>{{ shade.brand }}</h3>
+
+                    <h4 class="shade-name">
+                        {{ shade.name }}
+                    </h4>
+
+                    <p class="shade-product">
+                        {{ shade.product }}
+                    </p>
+
+
+                    <!-- SHADE COLOUR INFORMATION -->
+                    <div class="shade-rgb">
+
+                        <p><strong>Shade RGB Colour</strong></p>
+
+                        <p>
+                            R: {{ shade.R }}
+                            |
+                            G: {{ shade.G }}
+                            |
+                            B: {{ shade.B }}
+                        </p>
+
+                        <p>
+                            HEX: {{ shade.hex }}
+                        </p>
+
+                        <div
+                            class="shade-colour"
+                            data-color="{{ shade.hex }}">
+                        </div>
+
+                    </div>
+
+
+                    <!-- INDIA AVAILABILITY -->
+                    <p class="availability
+                        {% if shade.in_india_label == 'Available in India' %}
+                            available
+                        {% else %}
+                            unavailable
+                        {% endif %}">
+
+                        {% if shade.in_india_label == 'Available in India' %}
+                            ✓
+                        {% endif %}
+
+                        {{ shade.in_india_label }}
+
+                    </p>
+
+
+                    <!-- HALF AND FULL PREVIEWS -->
+                    <div class="preview-container">
+
+                        <div class="preview-grid">
+
+                            {% for preview in shades_output %}
+
+                                {% if preview.shade_index == shade.shade_index %}
+
+                                <div class="preview-item">
+
+                                    <p>
+                                        {% if preview.mode == 'half' %}
+                                            Half-face preview
+                                        {% else %}
+                                            Full-face preview
+                                        {% endif %}
+                                    </p>
+
+                                    <img
+                                        src="{{ url_for('static', filename=preview.img) }}"
+                                        alt="{{ preview.label }}"
+                                        loading="lazy"
+                                    >
+
+                                </div>
+
+                                {% endif %}
+
+                            {% endfor %}
+
+                        </div>
+
+                    </div>
+
+                </article>
+
+                {% endfor %}
+
+            </div>
+
+
+            <!-- SINGLE PDF DOWNLOAD -->
+            {% if download_url %}
+
+            <div class="download-area">
+
+                <p class="eyebrow">
+                    ✧ KEEP YOUR RESULTS ✧
+                </p>
+
+                <h2>Take Your PerfectHue Report With You</h2>
+
+                <p>
+                    Your personalised report contains your uploaded
+                    photograph, detected skin colour, estimated undertone,
+                    foundation recommendations, RGB values, availability
+                    and foundation preview images.
+                </p>
+
+                <a
+                    href="{{ download_url }}"
+                    class="download-button">
+                    ↓ Download My Results (PDF)
+                </a>
+
+                <p class="download-note">
+                    One beautifully organised PDF file.
+                    No ZIP folders or separate image downloads.
+                </p>
+
+            </div>
+
+            {% endif %}
+
+        </section>
+
+        {% endif %}
+
+
+        <!-- HOW IT WORKS -->
+        <section class="how-section" id="how-it-works">
+
+            <div class="section-heading">
+
+                <p class="eyebrow">
+                    ✧ BEHIND THE EXPERIENCE ✧
+                </p>
+
+                <h2>How PerfectHue works</h2>
+
+                <p>
+                    A thoughtful combination of computer vision,
+                    colour analysis and personalised recommendations.
+                </p>
+
+            </div>
+
+            <div class="steps-grid">
+
+                <article class="step-card">
+
+                    <span>01</span>
+
+                    <h3>Upload</h3>
+
+                    <p>
+                        Provide a clear photograph of your face.
+                    </p>
+
+                </article>
+
+                <article class="step-card">
+
+                    <span>02</span>
+
+                    <h3>Analyse</h3>
+
+                    <p>
+                        AI-assisted facial analysis identifies
+                        representative skin colour.
+                    </p>
+
+                </article>
+
+                <article class="step-card">
+
+                    <span>03</span>
+
+                    <h3>Discover</h3>
+
+                    <p>
+                        Explore foundation shades closest to
+                        your detected skin colour.
+                    </p>
+
+                </article>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- FOOTER -->
+    <footer>
+
+        <a href="/" class="footer-brand">
+            PerfectHue ✧
+        </a>
+
+        <p>
+            Beauty is personal. Your shade should be too.
+        </p>
+
+        <p class="copyright">
+            © 2026 PerfectHue. Created with care by Michelle Paul and AI.
+        </p>
+
+    </footer>
+
+
+    <!-- COLOUR SWATCHES -->
+    <script>
+        document.querySelectorAll("[data-color]").forEach(function(element) {
+            element.style.backgroundColor = element.dataset.color;
+        });
+    </script>
+
+
+    <!-- ORIGINAL JAVASCRIPT -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
+    <!-- SCROLL TO RESULTS AFTER A SUCCESSFUL ANALYSIS -->
+    {% if uploaded_file %}
+    <script>
+        window.addEventListener("load", function () {
+            const results = document.getElementById("results");
+
+            if (results) {
+                results.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start"
+                });
+            }
+        });
+    </script>
+    {% endif %}
+
+</body>
+</html>
