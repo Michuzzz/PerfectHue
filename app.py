@@ -343,31 +343,15 @@ def recommend_foundation(avg_color, top_n=3):
 # APPLY FOUNDATION TO FACE
 # --------------------------------------------------
 
-def apply_foundation(image, foundation_rgb, mode="half"):
-    """Create a simulated foundation-colour preview."""
+
+def apply_foundation(image, foundation_rgb, landmarks, mode="half"):
 
     height, width, _ = image.shape
 
-    mask = np.zeros(
-        (height, width), dtype=np.uint8
-    )
-
-    image_rgb = cv2.cvtColor(
-        image, cv2.COLOR_BGR2RGB
-    )
-
-    results = face_mesh.process(image_rgb)
-
-    if not results.multi_face_landmarks:
-        return image.copy()
-
-    landmarks = results.multi_face_landmarks[0].landmark
+    mask = np.zeros((height, width), dtype=np.uint8)
 
     points = [
-        (
-            int(landmark.x * width),
-            int(landmark.y * height)
-        )
+        (int(landmark.x * width), int(landmark.y * height))
         for landmark in landmarks
     ]
 
@@ -384,9 +368,7 @@ def apply_foundation(image, foundation_rgb, mode="half"):
         dtype=np.int32
     )
 
-    cv2.fillConvexPoly(
-        mask, face_points, 255
-    )
+    cv2.fillConvexPoly(mask, face_points, 255)
 
     left_eye = [
         33, 7, 163, 144, 145, 153, 154, 155,
@@ -404,31 +386,19 @@ def apply_foundation(image, foundation_rgb, mode="half"):
         13, 82, 81, 80
     ]
 
-    for excluded_region in [
-        left_eye, right_eye, mouth
-    ]:
-
+    for excluded_region in [left_eye, right_eye, mouth]:
         excluded_points = np.array(
             [points[index] for index in excluded_region],
             dtype=np.int32
         )
+        cv2.fillConvexPoly(mask, excluded_points, 0)
 
-        cv2.fillConvexPoly(
-            mask, excluded_points, 0
-        )
-
-    mask = cv2.GaussianBlur(
-        mask, (15, 15), 0
-    )
+    mask = cv2.GaussianBlur(mask, (15, 15), 0)
 
     if mode == "half":
-
         half_mask = np.zeros_like(mask)
         half_mask[:, :width // 2] = 255
-
-        mask = cv2.bitwise_and(
-            mask, half_mask
-        )
+        mask = cv2.bitwise_and(mask, half_mask)
 
     foundation_bgr = np.array(
         [
@@ -439,9 +409,7 @@ def apply_foundation(image, foundation_rgb, mode="half"):
         dtype=np.uint8
     )
 
-    foundation_layer = np.full_like(
-        image, foundation_bgr
-    )
+    foundation_layer = np.full_like(image, foundation_bgr)
 
     alpha = mask.astype(float) / 255.0
     alpha = np.expand_dims(alpha, axis=2) * 0.30
@@ -451,9 +419,7 @@ def apply_foundation(image, foundation_rgb, mode="half"):
         + foundation_layer.astype(float) * alpha
     )
 
-    return np.clip(
-        blended, 0, 255
-    ).astype(np.uint8)
+    return np.clip(blended, 0, 255).astype(np.uint8)
 
 
 # --------------------------------------------------
