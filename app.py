@@ -435,80 +435,51 @@ def create_result_pdf(
     recommendations,
     shades_output
 ):
-    """Create one polished PDF containing the complete analysis."""
+    """Create one compact, coordinated PerfectHue PDF report."""
+
+    from xml.sax.saxutils import escape
 
     result_id = uuid.uuid4().hex
-
     pdf_path = os.path.join(
         app.config["DOWNLOAD_FOLDER"],
         f"PerfectHue_Result_{result_id}.pdf"
     )
 
     page_width, page_height = A4
-
     doc = SimpleDocTemplate(
         pdf_path,
         pagesize=A4,
-        rightMargin=18 * mm,
-        leftMargin=18 * mm,
-        topMargin=17 * mm,
-        bottomMargin=17 * mm,
+        rightMargin=16 * mm,
+        leftMargin=16 * mm,
+        topMargin=12 * mm,
+        bottomMargin=16 * mm,
         title="PerfectHue Personal Shade Report",
         author="PerfectHue"
     )
 
+    # PerfectHue colour palette
     plum = colors.HexColor("#59434D")
     rose = colors.HexColor("#B87983")
     pale = colors.HexColor("#FBF4F1")
     muted = colors.HexColor("#806B70")
+    border = colors.HexColor("#EAD8D8")
     green = colors.HexColor("#47856B")
     red = colors.HexColor("#B66C78")
+    white = colors.white
 
     styles = getSampleStyleSheet()
-
     styles.add(ParagraphStyle(
-        name="PHBrand",
+        name="PHBrandCompact",
         parent=styles["Title"],
         fontName="Helvetica-Bold",
-        fontSize=25,
-        leading=30,
+        fontSize=23,
+        leading=26,
         textColor=plum,
         alignment=TA_CENTER,
-        spaceAfter=4
+        spaceAfter=2
     ))
-
     styles.add(ParagraphStyle(
-        name="PHSub",
-        parent=styles["Normal"],
-        fontName="Helvetica",
-        fontSize=9,
-        leading=14,
-        textColor=muted,
-        alignment=TA_CENTER
-    ))
-
-    styles.add(ParagraphStyle(
-        name="PHSection",
-        parent=styles["Heading2"],
-        fontName="Helvetica-Bold",
-        fontSize=15,
-        leading=19,
-        textColor=plum,
-        spaceBefore=10,
-        spaceAfter=8
-    ))
-
-    styles.add(ParagraphStyle(
-        name="PHBody",
-        parent=styles["BodyText"],
-        fontName="Helvetica",
-        fontSize=9,
-        leading=13,
-        textColor=muted
-    ))
-
-    styles.add(ParagraphStyle(
-        name="PHSmall",
+        name="PHSubCompact",
         parent=styles["Normal"],
         fontName="Helvetica",
         fontSize=8,
@@ -516,252 +487,281 @@ def create_result_pdf(
         textColor=muted,
         alignment=TA_CENTER
     ))
+    styles.add(ParagraphStyle(
+        name="PHSectionCompact",
+        parent=styles["Heading2"],
+        fontName="Helvetica-Bold",
+        fontSize=13,
+        leading=16,
+        textColor=plum,
+        spaceBefore=5,
+        spaceAfter=5
+    ))
+    styles.add(ParagraphStyle(
+        name="PHBodyCompact",
+        parent=styles["BodyText"],
+        fontName="Helvetica",
+        fontSize=8,
+        leading=10.5,
+        textColor=muted,
+        spaceAfter=1
+    ))
+    styles.add(ParagraphStyle(
+        name="PHShadeName",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=10,
+        leading=12,
+        textColor=rose
+    ))
+    styles.add(ParagraphStyle(
+        name="PHMicro",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=6.5,
+        leading=8,
+        textColor=muted,
+        alignment=TA_CENTER
+    ))
+
+    def fit_image(path, max_width, max_height):
+        """Return a proportionally scaled ReportLab image."""
+        with Image.open(path) as source_image:
+            image_width, image_height = source_image.size
+
+        scale = min(
+            max_width / float(image_width),
+            max_height / float(image_height)
+        )
+        image_flowable = RLImage(
+            path,
+            width=image_width * scale,
+            height=image_height * scale
+        )
+        image_flowable.hAlign = "CENTER"
+        return image_flowable
 
     story = [
-        Spacer(1, 3 * mm),
-
-        Paragraph(
-            "PERFECTHUE",
-            styles["PHBrand"]
-        ),
-
+        Spacer(1, 1 * mm),
+        Paragraph("PERFECTHUE", styles["PHBrandCompact"]),
         Paragraph(
             "YOUR PERSONAL FOUNDATION SHADE REPORT",
-            styles["PHSub"]
+            styles["PHSubCompact"]
         ),
-
-        Spacer(1, 5 * mm),
-
+        Spacer(1, 2 * mm),
         Paragraph(
             f"Created on {datetime.now().strftime('%d %B %Y')}",
-            styles["PHSub"]
+            styles["PHSubCompact"]
         ),
-
-        Spacer(1, 7 * mm),
-    ]
-
-    # Uploaded photograph and detected skin colour summary.
-    photo_cell = Paragraph(
-        f"<b>Detected skin colour</b><br/><br/>"
-        f"<font size='18' color='{skin_tone_hex}'>{skin_tone_hex}</font><br/><br/>"
-        f"RGB: {skin_tone[0]}, {skin_tone[1]}, {skin_tone[2]}<br/><br/>"
-        f"<b>Estimated undertone: {undertone}</b><br/><br/>"
-        f"<font size='8'>This is an image-based estimate. Lighting, "
-        f"makeup and camera settings may affect the result.</font>",
-        styles["PHBody"]
-    )
-
-    photo_flowable = Paragraph(
-        "<b>Your uploaded photograph</b>",
-        styles["PHSmall"]
-    )
-
-    if os.path.isfile(uploaded_path):
-        try:
-            photo_flowable = RLImage(
-                uploaded_path,
-                width=48 * mm,
-                height=60 * mm
-            )
-
-            photo_flowable.hAlign = "CENTER"
-
-        except Exception:
-            pass
-
-    analysis_table = Table(
-        [[photo_flowable, photo_cell]],
-        colWidths=[58 * mm, 112 * mm],
-        rowHeights=[66 * mm]
-    )
-
-    analysis_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), pale),
-        ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#EAD8D8")),
-        ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#EAD8D8")),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 10),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
-        ("TOPPADDING", (0, 0), (-1, -1), 9),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 9),
-    ]))
-
-    story += [
-        Paragraph(
-            "Your skin analysis",
-            styles["PHSection"]
-        ),
-
-        analysis_table,
-
-        Spacer(1, 7 * mm),
-
-        Paragraph(
-            "Your closest foundation matches",
-            styles["PHSection"]
-        ),
-
-        Paragraph(
-            "These recommendations are ranked by colour distance "
-            "from the detected skin colour in the dataset.",
-            styles["PHBody"]
-        ),
-
         Spacer(1, 4 * mm)
     ]
 
-    # Each recommendation includes RGB, swatch and availability.
-    for index, shade in enumerate(recommendations):
-
-        rgb_text = (
-            f"R: {shade['R']}  |  "
-            f"G: {shade['G']}  |  "
-            f"B: {shade['B']}"
+    # Uploaded photo and skin analysis in one compact panel.
+    if os.path.isfile(uploaded_path):
+        try:
+            photo_flowable = fit_image(
+                uploaded_path, 34 * mm, 43 * mm
+            )
+        except Exception:
+            photo_flowable = Paragraph(
+                "Uploaded photograph",
+                styles["PHMicro"]
+            )
+    else:
+        photo_flowable = Paragraph(
+            "Uploaded photograph",
+            styles["PHMicro"]
         )
 
-        availability = shade.get(
+    safe_hex = escape(str(skin_tone_hex))
+    analysis_text = Paragraph(
+        "<b>YOUR SKIN ANALYSIS</b><br/><br/>"
+        f"<font size='17' color='{safe_hex}'><b>{safe_hex}</b></font><br/>"
+        f"RGB: {int(skin_tone[0])}, {int(skin_tone[1])}, "
+        f"{int(skin_tone[2])}<br/><br/>"
+        f"<b>Estimated undertone: {escape(str(undertone))}</b><br/><br/>"
+        "<font size='7'>This is an image-based estimate. Lighting, "
+        "makeup and camera settings may affect the result.</font>",
+        styles["PHBodyCompact"]
+    )
+
+    analysis_panel = Table(
+        [[photo_flowable, analysis_text]],
+        colWidths=[43 * mm, 121 * mm]
+    )
+    analysis_panel.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), pale),
+        ("BOX", (0, 0), (-1, -1), 0.7, border),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (0, 0), "CENTER"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6)
+    ]))
+
+    story.extend([
+        analysis_panel,
+        Spacer(1, 3 * mm),
+        Paragraph(
+            "YOUR CLOSEST FOUNDATION MATCHES",
+            styles["PHSectionCompact"]
+        ),
+        Paragraph(
+            "Ranked by colour distance from the detected skin colour "
+            "in the foundation dataset.",
+            styles["PHBodyCompact"]
+        ),
+        Spacer(1, 2 * mm)
+    ])
+
+    # A compact row for each match. The two preview images are placed
+    # side by side in the same row as the shade details.
+    for index, shade in enumerate(recommendations):
+        brand = escape(str(shade.get("brand", "Unknown brand")))
+        shade_name = escape(str(shade.get("name", "Unnamed shade")))
+        product = escape(str(shade.get("product", "")))
+        shade_hex = str(shade.get("hex", "#C49A83"))
+
+        try:
+            swatch_colour = colors.HexColor(shade_hex)
+        except Exception:
+            swatch_colour = colors.HexColor("#C49A83")
+
+        availability = str(shade.get(
             "in_india_label",
             "Availability not specified"
+        ))
+        availability_colour = (
+            green if availability == "Available in India" else red
         )
 
-        availability_color = (
-            green
-            if availability == "Available in India"
-            else red
+        details = Paragraph(
+            f"<b>MATCH {index + 1:02d}  |  {brand}</b><br/>"
+            f"<font size='10' color='{rose.hexval()}'><b>{shade_name}</b></font><br/>"
+            f"{product}<br/>"
+            f"<b>HEX:</b> {escape(shade_hex)}<br/>"
+            f"RGB: {int(shade['R'])} / {int(shade['G'])} / "
+            f"{int(shade['B'])}<br/>"
+            f"<font color='{availability_colour.hexval()}'>"
+            f"<b>{escape(availability)}</b></font>",
+            styles["PHBodyCompact"]
         )
 
-        shade_details = Paragraph(
-            f"<b>{index + 1:02d} &nbsp; {shade['brand']}</b><br/>"
-            f"<font size='12' color='{rose.hexval()}'>{shade['name']}</font><br/>"
-            f"{shade.get('product', '')}<br/><br/>"
-            f"<b>Shade colour</b> &nbsp; {shade.get('hex', '')}<br/>"
-            f"{rgb_text}<br/><br/>"
-            f"<font color='{availability_color.hexval()}'>"
-            f"<b>{availability}</b></font>",
-            styles["PHBody"]
-        )
-
-        swatch = Table(
-            [[""]],
-            colWidths=[18 * mm],
-            rowHeights=[18 * mm]
-        )
-
+        swatch = Table([[""]], colWidths=[14 * mm], rowHeights=[14 * mm])
         swatch.setStyle(TableStyle([
-            (
-                "BACKGROUND",
-                (0, 0),
-                (-1, -1),
-                colors.HexColor(shade.get("hex", "#C49A83"))
-            ),
-            ("BOX", (0, 0), (-1, -1), 1, colors.white),
+            ("BACKGROUND", (0, 0), (-1, -1), swatch_colour),
+            ("BOX", (0, 0), (-1, -1), 1, white)
         ]))
 
-        preview_cells = []
-
+        previews_by_mode = {}
         for preview in shades_output:
-
-            if preview.get("shade_index") != index:
+            if preview.get("shade_index") != shade.get("shade_index", index):
                 continue
 
+            relative_path = str(preview.get("img", ""))
             preview_path = os.path.join(
                 BASE_DIR,
                 "static",
-                preview["img"].replace("/", os.sep)
+                relative_path.replace("/", os.sep)
             )
 
-            if os.path.isfile(preview_path):
+            if not os.path.isfile(preview_path):
+                continue
 
-                try:
-                    preview_img = RLImage(
-                        preview_path,
-                        width=29 * mm,
-                        height=37 * mm
-                    )
+            try:
+                previews_by_mode[preview.get("mode", "")] = fit_image(
+                    preview_path, 22 * mm, 29 * mm
+                )
+            except Exception:
+                app.logger.exception(
+                    "Could not add a preview image to the PDF: %s",
+                    preview_path
+                )
 
-                    preview_img.hAlign = "CENTER"
+        preview_columns = []
+        for mode, label in (
+            ("half", "HALF-FACE"),
+            ("full", "FULL-FACE")
+        ):
+            image_flowable = previews_by_mode.get(mode)
+            if image_flowable is None:
+                image_flowable = Paragraph(
+                    "Preview unavailable",
+                    styles["PHMicro"]
+                )
 
-                    preview_cells.append([
-                        Paragraph(
-                            "Half-face preview"
-                            if preview.get("mode") == "half"
-                            else "Full-face preview",
-                            styles["PHSmall"]
-                        ),
-                        preview_img
-                    ])
-
-                except Exception:
-                    continue
-
-        if preview_cells:
-
-            preview_table = Table(
-                [[cell for cell in preview_cells]],
-                colWidths=[34 * mm] * len(preview_cells)
+            preview_card = Table(
+                [[Paragraph(label, styles["PHMicro"])],
+                 [image_flowable]],
+                colWidths=[29 * mm]
             )
+            preview_card.setStyle(TableStyle([
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 1),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 1),
+                ("TOPPADDING", (0, 0), (-1, -1), 1),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 1)
+            ]))
+            preview_columns.append(preview_card)
 
-        else:
-
-            preview_table = Paragraph(
-                "Preview image unavailable",
-                styles["PHSmall"]
-            )
-
-        row = Table(
-            [[shade_details, swatch, preview_table]],
-            colWidths=[83 * mm, 23 * mm, 64 * mm]
+        preview_pair = Table(
+            [[preview_columns[0], preview_columns[1]]],
+            colWidths=[30 * mm, 30 * mm]
         )
+        preview_pair.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0)
+        ]))
 
-        row.setStyle(TableStyle([
+        recommendation_row = Table(
+            [[details, swatch, preview_pair]],
+            colWidths=[79 * mm, 18 * mm, 67 * mm]
+        )
+        recommendation_row.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, -1), pale),
-            ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#EAD8D8")),
+            ("BOX", (0, 0), (-1, -1), 0.6, border),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ("ALIGN", (1, 0), (1, 0), "CENTER"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 7),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 7),
-            ("TOPPADDING", (0, 0), (-1, -1), 8),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5)
         ]))
 
         story.extend([
-            KeepTogether([row]),
-            Spacer(1, 4 * mm)
+            recommendation_row,
+            Spacer(1, 2.5 * mm)
         ])
 
-    story += [
-        Spacer(1, 5 * mm),
-
+    story.extend([
+        Spacer(1, 2 * mm),
         Paragraph(
-            "PerfectHue • Beauty is personal. Your shade should be too.",
-            styles["PHSub"]
+            "PerfectHue  •  Beauty is personal. Your shade should be too.",
+            styles["PHSubCompact"]
         )
-    ]
+    ])
 
     def add_page_number(canvas, document):
-
         canvas.saveState()
-
-        canvas.setStrokeColor(
-            colors.HexColor("#EAD8D8")
-        )
-
+        canvas.setStrokeColor(border)
+        canvas.setLineWidth(0.5)
         canvas.line(
-            18 * mm,
-            13 * mm,
-            page_width - 18 * mm,
-            13 * mm
+            16 * mm, 12 * mm,
+            page_width - 16 * mm, 12 * mm
         )
-
-        canvas.setFont("Helvetica", 8)
+        canvas.setFont("Helvetica", 7)
         canvas.setFillColor(muted)
-
         canvas.drawCentredString(
             page_width / 2,
-            8 * mm,
+            7 * mm,
             f"PerfectHue  •  Page {document.page}"
         )
-
         canvas.restoreState()
 
     doc.build(
