@@ -409,17 +409,35 @@ def apply_foundation(image, foundation_rgb, landmarks, mode="half"):
         dtype=np.uint8
     )
 
-    foundation_layer = np.full_like(image, foundation_bgr)
+    # Blend only the face-mask bounding box instead of creating several
+    # full-image float64 arrays. This reduces peak memory use on small servers.
+    nonzero_mask = cv2.findNonZero(mask)
 
-    alpha = mask.astype(float) / 255.0
-    alpha = np.expand_dims(alpha, axis=2) * 0.30
+    if nonzero_mask is None:
+        return image.copy()
 
-    blended = (
-        image.astype(float) * (1 - alpha)
-        + foundation_layer.astype(float) * alpha
+    x, y, box_width, box_height = cv2.boundingRect(nonzero_mask)
+
+    mask_roi = mask[y:y + box_height, x:x + box_width]
+    image_roi = image[y:y + box_height, x:x + box_width]
+
+    alpha = mask_roi.astype(np.float32) * (0.30 / 255.0)
+    alpha = alpha[:, :, np.newaxis]
+
+    image_float = image_roi.astype(np.float32)
+    foundation_float = foundation_bgr.astype(np.float32)
+
+    blended_roi = (
+        image_float * (1.0 - alpha)
+        + foundation_float * alpha
     )
 
-    return np.clip(blended, 0, 255).astype(np.uint8)
+    result = image.copy()
+    result[y:y + box_height, x:x + box_width] = np.clip(
+        blended_roi, 0, 255
+    ).astype(np.uint8)
+
+    return result
 
 
 # --------------------------------------------------
